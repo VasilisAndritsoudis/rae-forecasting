@@ -18,7 +18,9 @@ EDA ideas:
 * Plot number of permits per region (bar)
 * Plot number of permits per technology (bar)
 * 
-* Plot average permit duration per region
-* Plot average permit acceptance per region
+* Plot average permit duration in months per region (bar)
+* Plot average permit acceptance in months per region (bar)
 * Plot technology in time (stacked-bar)
 * Plot regions in time (stacked-bar)
+* 
+* C02 price
