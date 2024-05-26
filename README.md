@@ -10,17 +10,21 @@ For the duplicates we kept only the last record (we treat it as a modification n
 Analysis on duplicates
 
 EDA ideas:
-* Plot MW timeseries trend (line)
-* Plot MW per region (bar)
-* Plot MW per technology (bar)
+* Plot MW timeseries trend (line) - DONE
+* Plot MW per region (bar) - DONE
+* Plot MW per technology (bar) - DONE
 * 
-* Plot number of permits per month & week trend (line)
-* Plot number of permits per region (bar)
-* Plot number of permits per technology (bar)
+* Plot number of permits per month & week trend (line) - DONE
+* Plot number of permits per region (bar) - DONE
+* Plot number of permits per technology (bar) - DONE
 * 
-* Plot average permit duration in months per region (bar)
-* Plot average permit acceptance in months per region (bar)
-* Plot technology in time (stacked-bar)
-* Plot regions in time (stacked-bar)
+* Plot average permit duration in months per region (bar) - DONE
+* Plot average permit acceptance in months per region (bar) - DONE
+* Plot average permit duration in months per technology (bar) - DONE
+* Plot average permit acceptance in months per technology (bar) - DONE
 * 
-* C02 price
+* Plot technology in time (line) - DONE
+* Plot regions in time (line) - DONE
+* 
+* C02 price - DONE
+* Wind speeds
