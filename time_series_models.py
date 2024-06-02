@@ -6,12 +6,13 @@ Created on Sat Jun  1 11:59:33 2024
 """
 
 import streamlit as st
+
 import pandas as pd
 
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.ensemble import RandomForestRegressor
 import xgboost as xgb
-
+from prophet import Prophet
 
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
@@ -128,6 +129,15 @@ def xgboost_model(train_data, test_data, target_var, time_col):
     return predictions
 
 
+def prophet_model(df, k, target_var, time_col):
+    prophet_df = df[[time_col, target_var]].rename(columns={time_col: 'ds', target_var: 'y'})
+    model = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=True)
+    model.fit(prophet_df)
+    future = model.make_future_dataframe(periods=k, include_history=False)
+    forecast = model.predict(future)
+    return forecast[['ds', 'yhat']].tail(k)
+
+
 def evaluate_model(test_data, predictions, target_var):
     mse = mean_squared_error(test_data[target_var], predictions)
     r2 = r2_score(test_data[target_var], predictions)
@@ -175,8 +185,12 @@ def predict_with_dif_models(hist_data, k, target_var, time_col, freq, lags = 4):
     
     xgb_predictions = xgboost_model(train_data_lagged, test_data_lagged, target_var, time_col)
     models_predictions_list.append(('XGBoost', xgb_predictions))
-    
-    
+
+
+    prophet_predictions = prophet_model(hist_data, k, target_var, time_col)
+    models_predictions_list.append(('Prophet', prophet_predictions['yhat'].values))
+
+
     for model_name, predictions in models_predictions_list:
         st.write(f"### {model_name} Predictions")
         # Round the predictions to the nearest integer
