@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import forecasting_models as fm
+import requests
 
 
 def load_df():
@@ -285,70 +287,70 @@ def main():
     st.sidebar.divider()
 
     # Create tabs
-    tab_eda, tab_ml = st.tabs(
-        ["Ανάλυση Δεδομένων", "Forecasting"])
+    tab_eda, tab_ml, tab_api = st.tabs(
+        ['Ανάλυση Δεδομένων', 'Ανάλυση Forecasting Μοντέλων', 'Forecast (API)'])
+
+    df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'] = pd.to_datetime(df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ']).dt.date
+
+    date_options = st.sidebar.date_input(
+        'Επιλογή Περιόδου',
+        (df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'].min(), df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'].max()),
+        df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'].min(),
+        df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'].max(),
+        format="DD/MM/YYYY"
+    )
+
+    period_options = st.sidebar.selectbox(
+        'Επιλογή Χρονικού Διαστήματος',
+        ('Μήνας', 'Εβδομάδα')
+    )
+
+    attribute_type_options = st.sidebar.selectbox(
+        'Επιλογή Χαρακτηριστικού',
+        ('Μέγιστη Ισχύς (MW)', 'Αριθμός Α.Π.Ε'),
+    )
+
+    timeseries_type_options = st.sidebar.multiselect(
+        'Επιλογή Χρονοσειράς',
+        ['Α.Π.Ε.', 'Τιμή CO2'],
+        ['Α.Π.Ε.']
+    )
+
+    region_options = st.sidebar.multiselect(
+        'Επιλογή Περιοχής',
+        df['ΠΕΡΙΦΕΡΕΙΑ'].unique(),
+        ['ΚΕΝΤΡΙΚΗΣ ΜΑΚΕΔΟΝΙΑΣ', 'ΑΤΤΙΚΗΣ', 'ΘΡΑΚΗΣ', 'ΠΕΛΟΠΟΝΝΗΣΟΥ']
+    )
+
+    tech_options = st.sidebar.multiselect(
+        'Επιλογή Είδος Α.Π.Ε.',
+        df['ΤΕΧΝΟΛΟΓΙΑ'].unique(),
+        ['ΦΩΤΟΒΟΛΤΑΪΚΑ', 'ΑΙΟΛΙΚΑ', 'ΜΥΗΕ']
+    )
+
+    period_type_options = st.sidebar.selectbox(
+        'Επιλογή Τύπου Χρονικού Διαστήματος',
+        ('Διάρκεια Α.Π.Ε.', 'Διάστημα Έγκρισης Α.Π.Ε.'),
+    )
+
+    if len(date_options) != 2:
+        st.warning("Προσοχή: Παρακαλώ επιλέξτε περιόδο", icon="⚠️")
+        return
+
+    if len(timeseries_type_options) == 0:
+        st.warning("Προσοχή: Παρακαλώ επιλέξτε χρονοσειρά", icon="⚠️")
+        return
+
+    if len(region_options) == 0:
+        st.warning("Προσοχή: Παρακαλώ επιλέξτε περιοχή", icon="⚠️")
+        return
+
+    if len(tech_options) == 0:
+        st.warning("Προσοχή: Παρακαλώ επιλέξτε είδος Α.Π.Ε.", icon="⚠️")
+        return
 
     with tab_eda:
         with st.spinner("Φορτώνει..."):
-            df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'] = pd.to_datetime(df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ']).dt.date
-
-            date_options = st.sidebar.date_input(
-                'Επιλογή Περιόδου',
-                (df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'].min(), df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'].max()),
-                df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'].min(),
-                df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'].max(),
-                format="DD/MM/YYYY"
-            )
-
-            period_options = st.sidebar.selectbox(
-                'Επιλογή Χρονικού Διαστήματος',
-                ('Μήνας', 'Εβδομάδα')
-            )
-
-            attribute_type_options = st.sidebar.selectbox(
-                'Επιλογή Χαρακτηριστικού',
-                ('Μέγιστη Ισχύς (MW)', 'Αριθμός Α.Π.Ε'),
-            )
-
-            timeseries_type_options = st.sidebar.multiselect(
-                'Επιλογή Χρονοσειράς',
-                ['Α.Π.Ε.', 'Τιμή CO2'],
-                ['Α.Π.Ε.']
-            )
-
-            region_options = st.sidebar.multiselect(
-                'Επιλογή Περιοχής',
-                df['ΠΕΡΙΦΕΡΕΙΑ'].unique(),
-                ['ΚΕΝΤΡΙΚΗΣ ΜΑΚΕΔΟΝΙΑΣ', 'ΑΤΤΙΚΗΣ', 'ΘΡΑΚΗΣ', 'ΠΕΛΟΠΟΝΝΗΣΟΥ']
-            )
-
-            tech_options = st.sidebar.multiselect(
-                'Επιλογή Είδος Α.Π.Ε.',
-                df['ΤΕΧΝΟΛΟΓΙΑ'].unique(),
-                ['ΦΩΤΟΒΟΛΤΑΪΚΑ', 'ΑΙΟΛΙΚΑ', 'ΜΥΗΕ']
-            )
-
-            period_type_options = st.sidebar.selectbox(
-                'Επιλογή Τύπου Χρονικού Διαστήματος',
-                ('Διάρκεια Α.Π.Ε.', 'Διάστημα Έγκρισης Α.Π.Ε.'),
-            )
-
-            if len(date_options) != 2:
-                st.warning("Προσοχή: Παρακαλώ επιλέξτε περιόδο", icon="⚠️")
-                return
-
-            if len(timeseries_type_options) == 0:
-                st.warning("Προσοχή: Παρακαλώ επιλέξτε χρονοσειρά", icon="⚠️")
-                return
-
-            if len(region_options) == 0:
-                st.warning("Προσοχή: Παρακαλώ επιλέξτε περιοχή", icon="⚠️")
-                return
-
-            if len(tech_options) == 0:
-                st.warning("Προσοχή: Παρακαλώ επιλέξτε είδος Α.Π.Ε.", icon="⚠️")
-                return
-
             date_mask = (df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'] > date_options[0]) & (
                     df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'] <= date_options[1])
             df = df.loc[date_mask]
@@ -381,6 +383,80 @@ def main():
             visualize_duration_per_column(df, 'ΤΕΧΝΟΛΟΓΙΑ', period_type_options)
 
             visualize_wind_speeds_per_region(df, region_options)
+
+    with tab_ml:
+        with st.spinner("Φορτώνει..."):
+            df = pd.read_csv('results\\final_permits.csv')
+            df = fm.preprocess_data(df)
+
+            st.title("Ανάλυση Forecasting Μοντέλων")
+
+            if period_options == 'Εβδομάδα':
+                cols_to_drop_list = ['start_production_month', 'approval_period_in_months', 'approved_time_in_months',
+                                     'monthly_co2_price']
+                time_col = 'start_production_week'
+                time_period = 'W'
+            else:
+                cols_to_drop_list = ['start_production_week', 'approval_period_in_weeks', 'approved_time_in_weeks',
+                                     'weekly_co2_price']
+                time_col = 'start_production_month'
+                time_period = 'M'
+
+            if attribute_type_options == 'Μέγιστη Ισχύς (MW)':
+                target_var = 'total_mw'
+            else:
+                target_var = 'num_permits'
+
+            k = st.slider('Επιλογή περιόδου πρόβλεψης', 1, 50, 20)
+            lags = st.slider('Επιλογή διαστήματος καθυστέρησης (Lag)', 1, 20, 4)
+
+            df_aggr = fm.transform_data_on_time_level(df, cols_to_drop_list, time_col, time_period)
+
+            if st.button('Πρόβλεψη'):
+                fm.predict_with_dif_models(df_aggr, k, target_var, time_col, time_period, lags)
+
+    with tab_api:
+        with st.spinner("Φορτώνει..."):
+            df = pd.read_csv('results\\final_permits.csv')
+            df = fm.preprocess_data(df)
+
+            st.title("Forecast (API)")
+
+            model_options = st.selectbox(
+                'Επιλογή Μοντέλου',
+                ('Sarima', 'Prophet'),
+                key='model_api'
+            )
+
+            k = st.slider('Επιλογή περιόδου πρόβλεψης', 1, 50, 20, key='k_api')
+
+            model = 'prophet'
+            if model_options == 'Sarima':
+                model = 'sarima'
+
+            period = 'month'
+            time_col = 'start_production_month'
+            freq = 'M'
+            if period_options == 'Εβδομάδα':
+                period = 'week'
+                time_col = 'start_production_week'
+                freq = 'W'
+
+            attribute = 'num_permits'
+            if attribute_type_options == 'Μέγιστη Ισχύς (MW)':
+                attribute = 'total_mw'
+
+            df_aggr = fm.transform_data_on_time_level(df, cols_to_drop_list, time_col, time_period)
+
+            if st.button('Πρόβλεψη', key='predict_api'):
+                url = 'http://127.0.0.1:5000/' + model + '/' + period + '/' + attribute
+                params = {'future': k}
+
+                response = requests.get(url, params=params)
+
+                predictions = pd.DataFrame(response.json())
+
+                fm.plot_forecast(df_aggr, predictions, df_aggr, k, attribute, time_col, freq)
 
 
 if __name__ == '__main__':

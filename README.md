@@ -27,4 +27,4 @@ EDA ideas:
 * Plot regions in time (line) - DONE
 * 
 * C02 price - DONE
-* Wind speeds
+* Wind speeds - DONE
