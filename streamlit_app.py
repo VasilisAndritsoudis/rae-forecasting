@@ -273,6 +273,78 @@ def visualize_wind_speeds_per_region(df: pd.DataFrame, region_options):
     st.plotly_chart(fig, use_container_width=True)
 
 
+def visualize_map_per_region(df: pd.DataFrame, region_options, tech_options):
+    tech_values = {}
+    for tech in tech_options:
+        tech_values[tech] = []
+
+    df = df[df['ΠΕΡΙΦΕΡΕΙΑ'].isin(region_options)]
+    df = df[df['ΤΕΧΝΟΛΟΓΙΑ'].isin(tech_options)]
+    region_options.sort()
+
+    st_df = df[['ΠΕΡΙΦΕΡΕΙΑ']].groupby('ΠΕΡΙΦΕΡΕΙΑ').size().to_frame('ΣΥΝΟΛΟ').reset_index()
+    for region in region_options:
+        if region not in st_df['ΠΕΡΙΦΕΡΕΙΑ'].tolist():
+            st_df.loc[-1] = [region, 0]
+
+    st_df = st_df.sort_values('ΠΕΡΙΦΕΡΕΙΑ')
+
+    for region in region_options:
+        tmp_df = df.loc[df['ΠΕΡΙΦΕΡΕΙΑ'] == region]
+        for tech in tech_options:
+            tmp2_df = tmp_df.loc[tmp_df['ΤΕΧΝΟΛΟΓΙΑ'] == tech]
+            tmp2_df = tmp2_df[['ΤΕΧΝΟΛΟΓΙΑ']].groupby('ΤΕΧΝΟΛΟΓΙΑ').size().to_frame('ΣΥΝΟΛΟ').reset_index()
+            if len(tmp2_df['ΣΥΝΟΛΟ'] > 0):
+                tech_values[tech].append(tmp2_df['ΣΥΝΟΛΟ'][0])
+            else:
+                tech_values[tech].append(0)
+
+    for tech in tech_options:
+        st_df[tech] = tech_values[tech]
+
+    map_df = pd.DataFrame(st_df['ΠΕΡΙΦΕΡΕΙΑ'])
+    st_df = st_df.rename(columns={'ΠΕΡΙΦΕΡΕΙΑ': 'index'}).set_index('index')
+
+    region_coordinates = {
+        'ΑΤΤΙΚΗΣ': {'lat': 38.05082680739226, 'lon': 23.8578173072956, 'color': '#01fdca'},
+        'ΒΟΡΕΙΟΥ ΑΙΓΑΙΟΥ': {'lat': 39.16941525248664, 'lon': 26.55833807468133, 'color': '#bced88'},
+        'ΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ': {'lat': 38.56563384179626, 'lon': 21.579466484242044, 'color': '#3d3d14'},
+        'ΔΥΤΙΚΗΣ ΜΑΚΕΔΟΝΙΑΣ': {'lat': 40.34337451918453, 'lon': 21.78741421561695, 'color': '#402ea6'},
+        'ΗΠΕΙΡΟΥ': {'lat': 39.616336608489874, 'lon': 20.760405981305702, 'color': '#f40e0f'},
+        'ΘΕΣΣΑΛΙΑΣ': {'lat': 39.71927641955807, 'lon': 22.034202789339368, 'color': '#0b8272'},
+        'ΘΡΑΚΗΣ': {'lat': 41.31279660764812, 'lon': 24.833653412782912, 'color': '#991bc3'},
+        'ΙΟΝΙΩΝ ΝΗΣΩΝ': {'lat': 38.35551102568012, 'lon': 20.65267610048106, 'color': '#c9ebe3'},
+        'ΚΕΝΤΡΙΚΗΣ ΜΑΚΕΔΟΝΙΑΣ': {'lat': 40.67021059879176, 'lon': 23.18886548761669, 'color': '#c51a22'},
+        'ΚΡΗΤΗΣ': {'lat': 35.335294403227756, 'lon': 24.801651120664943, 'color': '#99b423'},
+        'ΝΟΤΙΟΥ ΑΙΓΑΙΟΥ': {'lat': 37.29881524700314, 'lon': 25.167937441802696, 'color': '#e3d9da'},
+        'ΠΕΛΟΠΟΝΝΗΣΟΥ': {'lat': 37.56338331274773, 'lon': 22.35656315946391, 'color': '#0c33a3'},
+        'ΣΤΕΡΕΑΣ ΕΛΛΑΔΑΣ': {'lat': 38.71059959567908, 'lon': 22.70553554213672, 'color': '#f24878'}
+    }
+
+    lat = []
+    lon = []
+    color = []
+    for reg in map_df['ΠΕΡΙΦΕΡΕΙΑ']:
+        coordinates = region_coordinates[reg]
+        lat.append(coordinates['lat'])
+        lon.append(coordinates['lon'])
+        color.append(coordinates['color'])
+
+    map_df['lat'] = lat
+    map_df['lon'] = lon
+    map_df['color'] = color
+
+    st.table(st_df)
+    st.map(
+        map_df,
+        latitude='lat',
+        longitude='lon',
+        color='color',
+        size=15000,
+        zoom=5
+    )
+
+
 def main():
     pd.set_option("display.max.columns", None)
 
@@ -287,8 +359,8 @@ def main():
     st.sidebar.divider()
 
     # Create tabs
-    tab_eda, tab_ml, tab_api = st.tabs(
-        ['Ανάλυση Δεδομένων', 'Ανάλυση Forecasting Μοντέλων', 'Forecast (API)'])
+    tab_eda, tab_ml, tab_api, tab_map = st.tabs(
+        ['Ανάλυση Δεδομένων', 'Ανάλυση Forecasting Μοντέλων', 'Forecast (API)', 'Χάρτης'])
 
     df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ'] = pd.to_datetime(df['ΗΜΕΡΟΜΗΝΙΑ ΕΚΔ. ΑΔ.ΠΑΡΑΓΩΓΗΣ']).dt.date
 
@@ -386,8 +458,8 @@ def main():
 
     with tab_ml:
         with st.spinner("Φορτώνει..."):
-            df = pd.read_csv('results\\final_permits.csv')
-            df = fm.preprocess_data(df)
+            df_fm = pd.read_csv('results\\final_permits.csv')
+            df_fm = fm.preprocess_data(df_fm)
 
             st.title("Ανάλυση Forecasting Μοντέλων")
 
@@ -410,16 +482,13 @@ def main():
             k = st.slider('Επιλογή περιόδου πρόβλεψης', 1, 50, 20)
             lags = st.slider('Επιλογή διαστήματος καθυστέρησης (Lag)', 1, 20, 4)
 
-            df_aggr = fm.transform_data_on_time_level(df, cols_to_drop_list, time_col, time_period)
+            df_aggr = fm.transform_data_on_time_level(df_fm, cols_to_drop_list, time_col, time_period)
 
             if st.button('Πρόβλεψη'):
                 fm.predict_with_dif_models(df_aggr, k, target_var, time_col, time_period, lags)
 
     with tab_api:
         with st.spinner("Φορτώνει..."):
-            df = pd.read_csv('results\\final_permits.csv')
-            df = fm.preprocess_data(df)
-
             st.title("Forecast (API)")
 
             model_options = st.selectbox(
@@ -446,7 +515,7 @@ def main():
             if attribute_type_options == 'Μέγιστη Ισχύς (MW)':
                 attribute = 'total_mw'
 
-            df_aggr = fm.transform_data_on_time_level(df, cols_to_drop_list, time_col, time_period)
+            df_aggr = fm.transform_data_on_time_level(df_fm, cols_to_drop_list, time_col, time_period)
 
             if st.button('Πρόβλεψη', key='predict_api'):
                 url = 'http://127.0.0.1:5000/' + model + '/' + period + '/' + attribute
@@ -457,6 +526,12 @@ def main():
                 predictions = pd.DataFrame(response.json())
 
                 fm.plot_forecast(df_aggr, predictions, df_aggr, k, attribute, time_col, freq)
+
+    with tab_map:
+        with st.spinner("Φορτώνει..."):
+            st.title("Χάρτης με είδη αδειών ανα Περιφέρεια")
+
+            visualize_map_per_region(df, region_options, tech_options)
 
 
 if __name__ == '__main__':
